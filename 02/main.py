@@ -1,4 +1,3 @@
-
 import os
 from dotenv import load_dotenv
 from groq import Groq
@@ -18,6 +17,10 @@ client = Groq(api_key=api_key)
 response = client.chat.completions.create(
     model="openai/gpt-oss-20b",
     messages=[
+        {
+            "role": "system",
+            "content": "only answer mathematical questions and do not answer any other questions, tell the user that you can only answer mathematical questions and do not answer any other questions."
+        },
         {
             "role": "user",
             "content": "hey this is Anas, can you tell me a joke?"

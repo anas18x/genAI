@@ -11,7 +11,7 @@ client = Groq(api_key=api_key)
 
 system_prompt= """u are a coding expert. answer the question step by step and then give the final answer. if the question is not related to coding, say sorry I can only answer coding questions.
 
-Return every response as a valid JSON object with these keys:
+Return every response as a valid json object with these keys:
 - "STEP": "START", "PLANNING", or "END"
 - "content": your response as a string
 

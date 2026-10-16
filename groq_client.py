@@ -30,7 +30,7 @@ def generate_response(
     
     response = client.chat.completions.create(
         model="openai/gpt-oss-20b",
-        response_format = {"type": "json_object"},
+        # response_format = {"type": "json_object"},
         messages=messages,
         max_completion_tokens=max_completion_tokens,
     )    

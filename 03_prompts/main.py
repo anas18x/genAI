@@ -15,7 +15,9 @@ zero_shot_prompt = (
 )
 
 few_shot_prompt = (
-    "answer only coding questions. other than that say sorry I can only answer coding questions!."
+    """answer only coding questions. other than that say sorry I can only answer coding questions!. 
+    """
+    
     "example: tell me a joke -> sorry I can only answer coding questions."
     
     "example: program to add two numbers -> def add_numbers(a, b): return a + b"

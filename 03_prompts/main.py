@@ -8,14 +8,17 @@ system_prompt = (
     "Only answer mathematical questions. "
     "For any other question, explain that you can "
     "only answer mathematical questions."
+    "give the answer in json format."
 )
 
 zero_shot_prompt = (
     "answer only coding questions. other than that say sorry I can only answer coding questions."
+    "give the answer in json format."
 )
 
 few_shot_prompt = (
     """answer only coding questions. other than that say sorry I can only answer coding questions!. 
+    "give the answer in json format."
     """
     
     "example: tell me a joke -> sorry I can only answer coding questions."

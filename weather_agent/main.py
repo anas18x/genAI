@@ -7,6 +7,9 @@ from groq import Groq
 load_dotenv()
 api_key = os.getenv("GROQ_API_KEY")
 
+from pydantic import BaseModel, Field
+from typing import Optional
+
 
 system_prompt = """
 you are an AI weather assistant named "WeatherBot". Your primary role is to provide accurate and up-to-date weather information to users based on their queries. You should respond in a friendly and informative manner, ensuring that the user receives the weather details they are looking for.
@@ -23,6 +26,11 @@ Rules:
 6. After PLAN, return TOOL with the city as input.
 7. After receiving OBSERVE, return OUTPUT using the tool result.
 8. Never invent weather data.
+9. Never use native function/tool calling. Always return a JSON object
+   using the specified step format. For calling the weather function,
+   return {"step":"TOOL","tool":"get_weather","input":"Delhi"}.
+    
+
 
 JSON formats:
 {"step":"START","content":"..."}
@@ -30,11 +38,26 @@ JSON formats:
 {"step":"TOOL","tool":"get_weather","input":"Delhi"}
 {"step":"OUTPUT","content":"..."}
 
-Available tools:
-1. get_weather(city: str) -> str: This tool fetches the current weather information for the specified city. takes a city name as input and returns the weather details as a string.
+Available actions (these are NOT native function calls):
+1. get_weather: fetches current weather for a city.
+To use it, return exactly:
+{"step":"TOOL","tool":"get_weather","input":"<city name>"}
 
-Output JSON format:
-{"step" : "START", "PLAN", "TOOL", "OBSERVE", or "OUTPUT", "content": "<your response here>"}
+JSON formats:
+{"step":"START","content":"..."}
+{"step":"PLAN","content":"..."}
+{"step":"TOOL","tool":"get_weather","input":"Delhi"}
+{"step":"OUTPUT","content":"..."}
+
+You must return each step as a normal JSON text response,
+not as a native function call.
+
+For a weather request, return START once, PLAN once,
+then TOOL with the requested city.
+After receiving OBSERVE, return OUTPUT with the weather result.
+
+Do not repeat START or PLAN.
+Never invent weather data.
 
 example:
 START : what is the weather of Delhi?
@@ -46,6 +69,15 @@ PLAN:{"step":"OBSERVE", "tool":"get_weather", "output":"The weather is Delhi is 
 OUTPUT:{"step":"OUTPUT", "content":"The weather is Delhi is Partly cloudy +30°C"}
 
 """
+
+class OutputFormat(BaseModel):
+    step: str = Field(
+        ...,
+        description="Current step: START, PLAN, TOOL, OBSERVE, OUTPUT."
+    )
+    content: Optional[str] = Field(default=None, description="Message content.")
+    tool: Optional[str] = Field(default=None, description="Tool name.")
+    input: Optional[str] = Field(default=None, description="Tool input.")
 
 def getWeather(city : str):
     url = f"https://wttr.in/{city.lower()}?format=%C+%t"
@@ -72,29 +104,29 @@ available_tools = {
 }
 
 while(True):
-    response = client.chat.completions.create(
+    response = client.chat.completions.parse(
     model="openai/gpt-oss-20b",
-    response_format={"type": "json_object"},
+    response_format=OutputFormat,
     messages=messageHistory,
    )
     
     raw_result = response.choices[0].message.content
     messageHistory.append({"role":"assistant", "content":raw_result})
     
-    parsed_result = json.loads(raw_result)
+    parsed_result = response.choices[0].message.parsed
     # print("DEBUG:", type(parsed_result), parsed_result)
     
-    if parsed_result.get("step") == "START":
-        print("🔥",parsed_result.get("content"))
+    if parsed_result.step == "START":
+        print("🔥",parsed_result.content)
         continue
     
-    if parsed_result.get("step") == "PLAN":
-        print("📝",parsed_result.get("content"))
+    if parsed_result.step == "PLAN":
+        print("📝",parsed_result.content)
         continue
 
-    if parsed_result.get("step") == "TOOL":
-        tool_name = parsed_result.get("tool")
-        tool_input = parsed_result.get("input")
+    if parsed_result.step == "TOOL":
+        tool_name = (parsed_result.tool or "").split(".")[-1]
+        tool_input = parsed_result.input
         
         print(f"🛠️ Using tool: {tool_name} with input: {tool_input}")
         tool_response = available_tools[tool_name](tool_input)
@@ -110,6 +142,6 @@ while(True):
     })
         continue
 
-    if parsed_result.get("step") == "OUTPUT":
-        print("✅",parsed_result.get("content"))
+    if parsed_result.step == "OUTPUT":
+        print("✅",parsed_result.content)
         break
